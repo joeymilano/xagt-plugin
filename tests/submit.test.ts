@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { mkdtemp } from "node:fs/promises";
+import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, readdir, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseArgs } from "../src/cli.js";
+import { parseArgs, runCli } from "../src/cli.js";
 import { renderManifest, renderMarkdown, renderRightsDeclaration, runSubmit } from "../src/submit.js";
 
 const payload = {
@@ -50,15 +50,46 @@ describe("MCP Hackathon submission", () => {
     expect(rights).toContain(payload.slug);
   });
 
-  it("places new projects in the MCP Hackathon namespace", async () => {
+  it.each([{}, payload])("rejects packaging before prompts or file writes", async (input) => {
     const outputDir = await mkdtemp(join(tmpdir(), "xagt-submit-output-"));
-    const result = await runSubmit({
-      cliVersion: "0.4.0",
-      input: payload,
-      outputDir
-    });
-    expect(result.filename).toBe("submissions/mcp-hackathon/team-useful-capability/SUBMISSION.md");
-    expect(result.manifestFilename).toBe("submissions/mcp-hackathon/team-useful-capability/submission.json");
-    expect(result.rightsFilename).toBe("submissions/mcp-hackathon/team-useful-capability/RIGHTS.md");
+    try {
+      const existing = `submission-${payload.slug}.md`;
+      await writeFile(join(outputDir, existing), "preserved draft");
+      await expect(runSubmit({ cliVersion: "0.5.0", input, outputDir })).rejects.toThrow(/Submissions are closed/);
+      expect(await readdir(outputDir)).toEqual([existing]);
+      expect(await readFile(join(outputDir, existing), "utf8")).toBe("preserved draft");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([{ flags: [] }, { flags: ["--name", payload.name, "--slug", payload.slug, "--intro", payload.intro,
+    "--repo", payload.repo, "--api", payload.api, "--health", payload.health, "--commit", payload.commit] }])(
+    "rejects CLI submission with no packaging or PR guidance", async ({ flags }) => {
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      try {
+        await expect(runCli(["submit", ...flags])).rejects.toThrow(/admin https:\/\/t.me\/KongK0u/);
+        expect(stdout).not.toHaveBeenCalled();
+      } finally {
+        stdout.mockRestore();
+      }
+    }
+  );
+
+  it("keeps ordinary commands in help and announces closure", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    try {
+      expect(await runCli(["help"])).toBe(0);
+      const help = stdout.mock.calls.map(([text]) => text).join("");
+      expect(help).toContain("Submissions are closed");
+      expect(help).toContain("mcp-hackathon-2026-winners.md");
+      expect(help).toContain("https://t.me/KongK0u");
+      for (const command of ["setup", "login", "install", "report", "doctor"]) {
+        expect(help).toContain(`xagt-plugin ${command}`);
+      }
+      expect(help).not.toMatch(/generate a manifest|Hackathon flow|submit source/);
+    } finally {
+      stdout.mockRestore();
+    }
   });
 });

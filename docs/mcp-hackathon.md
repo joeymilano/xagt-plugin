@@ -1,16 +1,18 @@
-# X-Agent MCP Hackathon: program and review rules
+# X-Agent MCP Hackathon: archived program and review rules
+
+**The 2026 event has concluded. Submissions are closed.** See the [final winners and reward contact instructions](./mcp-hackathon-2026-winners.md). The rules below are retained as an event record.
 
 ## Purpose
 
 The program discovers real agent capabilities, verifies that they can be operated and maintained, standardizes selected capabilities as MCP tools, and assists their submission to the OKX Agent ecosystem.
 
-This is the current program. The May 2026 X-Agent × OKX Agentic Wallet Hackathon is closed and preserved in the [`historical activity archive`](./archive/2026-xagent-okx-agentic-wallet-hackathon.md).
+This document records the September–October 2026 program. The May 2026 X-Agent × OKX Agentic Wallet Hackathon is closed and preserved in the [`historical activity archive`](./archive/2026-xagent-okx-agentic-wallet-hackathon.md).
 
 ## Who can participate
 
-Any builder or team may submit a capability that agents can call to complete a real task. There are no prescribed tracks, languages, frameworks, or MCP implementation requirement at entry.
+The event was open to builders and teams developing capabilities that agents can call to complete real tasks. The two tracks were Open Innovation and the OlaXBT × X-Agent Trading Challenge; see the [archived event rules](../README.md#archived-event-rules-and-submission-reference-x-agent-ai-mcp-hackathon-2026) for their requirements.
 
-Current entries are submitted only under `submissions/mcp-hackathon/<team>-<project>/`. Historical submission directories are read-only program records and are not valid entry points for this activity.
+Entries were submitted under `submissions/mcp-hackathon/<team>-<project>/`. Historical submission directories are read-only program records and were not valid entry points for this activity.
 
 ## Hard acceptance gates
 
@@ -52,4 +54,4 @@ After a pass, X-Agent works with the team to define tool boundaries, input/outpu
 
 ## Program changes
 
-Dates, reward terms, repository targets, and the final OKX process are communicated through the official program notice. This repository describes the submission contract and should be followed until a superseding notice is published.
+Dates, reward terms, repository targets, and the final OKX process are communicated through the official program notice. The submission contract is retained for reference and does not reopen the concluded event.

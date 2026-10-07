@@ -1,14 +1,15 @@
-name: Acknowledge current hackathon submission
+name: Notify that hackathon submissions are closed
 
 on:
   pull_request_target:
+    branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "submissions/mcp-hackathon/**"
   workflow_dispatch:
     inputs:
       pull_request_number:
-        description: Existing current-event PR to acknowledge without duplicating a receipt
+        description: Open PR to notify that submissions are closed (once per PR)
         required: true
         type: string
 
@@ -29,7 +30,7 @@ jobs:
       - name: Check out official code only
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.sha }}
+          ref: refs/heads/main
           persist-credentials: false
 
       - name: Use Node 24
@@ -38,7 +39,7 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
-      - name: Post one English receipt using PR metadata only
+      - name: Post one closure notice using PR metadata only
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ inputs.pull_request_number }}

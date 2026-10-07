@@ -13,18 +13,21 @@ describe("xagt-setup skill", () => {
 });
 
 describe("xagt-submit-hackathon skill", () => {
-  it("requires verifiable evidence and preserves publish authorization boundaries", async () => {
+  it("closes submissions and preserves archives and ordinary contribution boundaries", async () => {
     const skill = await readFile("skills/xagt-submit-hackathon/SKILL.md", "utf8");
     expect(skill).toMatch(/name: xagt-submit-hackathon/);
     expect(skill).toMatch(/Never invent a URL, response, Commit, test result, ownership claim, or deployment state/);
     expect(skill).toMatch(/explicitly authorizes publishing/);
-    expect(skill).toMatch(/--online/);
+    expect(skill).toMatch(/Submissions are closed/);
+    expect(skill).toMatch(/Do not collect submission details/);
+    expect(skill).toMatch(/https:\/\/t.me\/KongK0u/);
+    expect(skill).toMatch(/Ordinary non-competition contributions remain welcome/);
     expect(skill).toMatch(/submissions\/mcp-hackathon\/<slug>/);
   });
 
   it("has valid Codex interface metadata", async () => {
     const metadata = await readFile("skills/xagt-submit-hackathon/agents/openai.yaml", "utf8");
-    expect(metadata).toMatch(/display_name: "Submit to X-Agent Hackathon"/);
+    expect(metadata).toMatch(/display_name: "X-Agent Hackathon — Closed"/);
     expect(metadata).toMatch(/\$xagt-submit-hackathon/);
   });
 

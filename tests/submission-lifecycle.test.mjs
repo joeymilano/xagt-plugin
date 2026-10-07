@@ -69,7 +69,7 @@ function fixture() {
       event: "pull_request", status: "completed", conclusion: "success", head_sha: head,
       head_branch: "entry", head_repository: { full_name: "participant/fork" }
     },
-    associated: null, treeForCommit: {}, failPost: false, persistBeforePostError: false
+    associated: null, existingProject: true, treeForCommit: {}, failPost: false, persistBeforePostError: false
   };
   let pullReads = 0;
   function blobs() {
@@ -108,6 +108,10 @@ function fixture() {
       if (path === `${prefix}/pulls/33`) {
         pullReads += 1;
         return structuredClone(state.mutatePullRead?.(pullReads, state.pull) ?? state.pull);
+      }
+      if (path === `${prefix}/contents/${project}?ref=${base}`) {
+        if (!state.existingProject) throw Object.assign(new Error("missing project"), { status: 404 });
+        return [{ name: "submission.json", type: "file" }];
       }
       if (path === `${prefix}/actions/runs/42`) return structuredClone(state.run);
       if (path.startsWith(`${prefix}/git/ref/`)) {
@@ -154,7 +158,7 @@ function onlineOptions(scratchRoot) {
   };
 }
 
-describe("English receipts", () => {
+describe("English closure notices", () => {
   it("explains check failures without making a review decision or rendering injected content", () => {
     const message = new Error("Missing <img src=x onerror=alert(1)>\n[details](https://evil.invalid)");
     const summary = workflowSummary("validate", undefined, message);
@@ -165,32 +169,53 @@ describe("English receipts", () => {
     expect(summary).toContain("&lt;img");
     expect(workflowSummary("archive", { status: "archived-not-reviewed", checks: ["source inspected"] })).toContain("source inspected");
   });
-  it("acknowledges once without promising review acceptance or rewards", async () => {
+  it("announces closure once and links published results and reward contact", async () => {
     const { api, writes } = fixture();
-    expect((await acknowledgeSubmission(api, 33)).status).toBe("received");
-    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-received");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("closed");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-notified-closed");
     expect(writes()).toHaveLength(1);
-    expect(receiptBody(33)).toContain("does not confirm eligibility");
-    expect(receiptBody(33)).toContain("An external repository link alone is not sufficient");
-    expect(receiptBody(33)).toContain("merging code for archival purposes does not");
+    expect(receiptBody(33)).toContain("Submissions are closed");
+    expect(receiptBody(33)).toContain("not accepted as a new competition entry");
+    expect(receiptBody(33)).toContain("mcp-hackathon-2026-winners.md");
+    expect(receiptBody(33)).toContain("https://t.me/KongK0u");
+    expect(receiptBody(33)).toContain("Ordinary non-competition contributions");
+    expect(receiptBody(33)).not.toMatch(/Submission received|will be announced|Please include|while submissions remain open/);
   });
 
   it("recognizes an existing maintainer receipt and ignores participant-forged markers", async () => {
     const { api, state, writes } = fixture();
     state.comments = [{ body: RECEIPT_MARKER, user: { login: "maintainer" }, author_association: "MEMBER" }];
-    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-received");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-notified-closed");
     expect(writes()).toHaveLength(0);
     state.comments[0].author_association = "CONTRIBUTOR";
-    expect((await acknowledgeSubmission(api, 33)).status).toBe("received");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("closed");
     expect(writes()).toHaveLength(1);
   });
 
-  it("does not touch closed PRs or the expired activity", async () => {
+  it("supersedes a legacy receipt once without editing the historical comment", async () => {
+    const { api, state, writes } = fixture();
+    const legacy = { body: "<!-- xagent-mcp-submission-receipt-v1 --> old receipt", user: { login: "github-actions[bot]" } };
+    state.comments.push(legacy);
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("closed");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-notified-closed");
+    expect(writes()).toHaveLength(1);
+    expect(state.comments[0]).toEqual(legacy);
+  });
+
+  it("notifies on renames out of the competition directory", async () => {
+    const { api, state } = fixture();
+    state.files = [{ filename: "maintenance/source.js", previous_filename: `${project}/source.js`, status: "renamed" }];
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("closed");
+  });
+
+  it("does not touch closed PRs, historical activities, or unrelated contributions", async () => {
     const { api, state, writes } = fixture();
     state.pull.state = "closed";
     expect((await acknowledgeSubmission(api, 33)).status).toBe("skipped");
     state.pull.state = "open";
     state.files = [{ filename: "submissions/old-activity/META.md" }];
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("skipped");
+    state.files = [{ filename: "src/cli.ts" }];
     expect((await acknowledgeSubmission(api, 33)).status).toBe("skipped");
     expect(writes()).toHaveLength(0);
   });
@@ -210,12 +235,36 @@ describe("English receipts", () => {
     state.failPost = true;
     state.persistBeforePostError = true;
     await expect(acknowledgeSubmission(api, 33)).rejects.toThrow(/lost POST/);
-    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-received");
+    expect((await acknowledgeSubmission(api, 33)).status).toBe("already-notified-closed");
     expect(writes()).toHaveLength(1);
   });
 });
 
 describe("bounded, read-only source inspection", () => {
+  it("rejects new entries before source fetches, online checks, writes, or archival", async () => {
+    const { api, state, writes } = fixture();
+    state.existingProject = false;
+    const scratch = await temporary();
+    const options = onlineOptions(scratch);
+    await expect(validatePull(api, state.pull, options)).rejects.toThrow(/Submissions are closed/);
+    await expect(archiveValidatedRun(api, 42, options)).rejects.toThrow(/Submissions are closed/);
+    expect(options.validationOptions.commitVerifier).not.toHaveBeenCalled();
+    expect(options.validationOptions.jsonRequester).not.toHaveBeenCalled();
+    expect(api.request.mock.calls.some(([path]) => /git\/(trees|blobs)/.test(path))).toBe(false);
+    expect(writes()).toHaveLength(0);
+    expect(await readdir(scratch)).toEqual([]);
+  });
+
+  it("fails closed if the trusted base lookup fails", async () => {
+    const { api, state } = fixture();
+    const request = api.request.getMockImplementation();
+    api.request.mockImplementation((path, options) => {
+      if (path.includes("/contents/")) throw Object.assign(new Error("unavailable"), { status: 503 });
+      return request(path, options);
+    });
+    await expect(validatePull(api, state.pull)).rejects.toThrow(/unavailable/);
+  });
+
   it("rejects invalid PR numbers, other repositories, mixed paths, and rename escapes", async () => {
     const { api, state } = fixture();
     await expect(readPull(api, "33/../1")).rejects.toThrow(/number/);
@@ -429,6 +478,9 @@ describe("workflow configuration contract", () => {
     expect(validation).not.toContain("ref: ${{ github.event.pull_request.base.sha }}");
     expect(receipt).toContain("pull-requests: write");
     expect(receipt).not.toContain("contents: write");
+    expect(receipt).toContain("branches: [main]");
+    expect(receipt).toContain("ref: refs/heads/main");
+    expect(receipt).toContain("Post one closure notice");
     expect(archive).toContain("workflow_run:");
     expect(archive).toContain("node scripts/submission-lifecycle.mjs archive");
     expect(seal).toContain("workflow_dispatch:");

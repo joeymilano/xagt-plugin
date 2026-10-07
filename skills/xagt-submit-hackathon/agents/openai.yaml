@@ -1,4 +1,4 @@
 interface:
-  display_name: "Submit to X-Agent Hackathon"
-  short_description: "Prepare and verify a hackathon submission PR"
-  default_prompt: "Use $xagt-submit-hackathon to prepare, validate, and submit this project as a verifiable X-Agent MCP Hackathon pull request."
+  display_name: "X-Agent Hackathon — Closed"
+  short_description: "Event closed: winners, reward contact, and archives"
+  default_prompt: "Use $xagt-submit-hackathon to explain that submissions are closed, share the published winners and admin reward contact, and distinguish ordinary contributions from competition entries."

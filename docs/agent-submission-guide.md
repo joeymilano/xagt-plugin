@@ -1,4 +1,6 @@
-# Submit with Codex, Claude Code, or another coding agent
+# Archived submission guide: Codex, Claude Code, or another coding agent
+
+**The X-Agent AI MCP Hackathon 2026 has concluded. Submissions are closed.** See the [final winners and reward contact instructions](./mcp-hackathon-2026-winners.md). The prompts and steps below are preserved for reference; do not use them to submit a new entry to this event.
 
 Vibe-coded projects are welcome. A coding agent can prepare the source package, verify the deployment, run the official checks, and open the pull request. The evidence requirements are the same for human-written and agent-written projects.
 

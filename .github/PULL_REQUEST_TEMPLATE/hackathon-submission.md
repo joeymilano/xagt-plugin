@@ -1,11 +1,19 @@
-## X-Agent MCP Hackathon submission
+## X-Agent MCP Hackathon — submissions closed
+
+**The X-Agent AI MCP Hackathon 2026 has concluded. New competition entries are not accepted.**
+See the [published winners and awards](https://github.com/xagentAI/xagt-plugin/blob/main/docs/mcp-hackathon-2026-winners.md).
+Reward contact: [admin](https://t.me/KongK0u).
+
+Ordinary non-competition contributions should use the normal PR process. The checklist below is retained only for maintenance of existing archived projects; it does not reopen eligibility.
+
+### Archived project maintenance
 
 - Submission directory: `submissions/mcp-hackathon/<team>-<project>/`
 - Live API:
 - Review commit:
 - Source repository:
 
-### Submitter confirmation
+### Archive maintenance checks
 
 - [ ] This PR changes one submission directory only.
 - [ ] `source/` contains the complete review source and no secrets or private data.
@@ -16,8 +24,8 @@
 - [ ] I understand that passing X-Agent review does not promise OKX acceptance, listing, traffic, or revenue.
 - [ ] I understand that closing an unmerged PR withdraws the entry, and that accepted/rewarded source remains in X-Agent's official archive.
 
-### Reviewer notes
+### Maintainer notes
 
 - Automated hard gates:
 - Manual scorecard:
-- Decision: pass / conditional pass / not accepted
+- Maintenance decision (not a competition or award decision):

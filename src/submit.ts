@@ -1,8 +1,3 @@
-import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-
 export interface SubmitInput {
   name?: string;
   slug?: string;
@@ -30,142 +25,17 @@ export interface SubmitOptions {
   outputDir?: string;
 }
 
-export interface SubmitResult {
-  slug: string;
-  filename: string;
-  manifestFilename: string;
-  rightsFilename: string;
-  forkUrl: string;
-  repoUrl: string;
-  localPath: string;
-  localManifestPath: string;
-  localRightsPath: string;
-  markdown: string;
-  manifest: string;
-  rights: string;
-}
+export const HACKATHON_CLOSED_MESSAGE =
+  "The X-Agent AI MCP Hackathon 2026 has concluded. Submissions are closed. " +
+  "No submission package will be created. " +
+  "Final winners: https://github.com/xagentAI/xagt-plugin/blob/main/docs/mcp-hackathon-2026-winners.md. " +
+  "Reward contact: admin https://t.me/KongK0u. " +
+  "Ordinary non-competition contributions remain welcome through normal pull requests.";
 
-const DEFAULT_REPO = "xagentAI/xagt-plugin";
-
-export async function runSubmit(options: SubmitOptions): Promise<SubmitResult> {
-  const payload = await collectPayload(options.input);
-  validatePayload(payload);
-
-  const repo = options.submissionRepo ?? DEFAULT_REPO;
-  const filename = `submissions/mcp-hackathon/${payload.slug}/SUBMISSION.md`;
-  const manifestFilename = `submissions/mcp-hackathon/${payload.slug}/submission.json`;
-  const rightsFilename = `submissions/mcp-hackathon/${payload.slug}/RIGHTS.md`;
-  const markdown = renderMarkdown(payload, options.cliVersion);
-  const manifest = renderManifest(payload, options.cliVersion);
-  const rights = renderRightsDeclaration(payload);
-  const repoUrl = `https://github.com/${repo}`;
-  const forkUrl = `${repoUrl}/fork`;
-
-  const outDir = options.outputDir ?? process.cwd();
-  const localPath = resolve(outDir, `submission-${payload.slug}.md`);
-  const localManifestPath = resolve(outDir, `submission-${payload.slug}.json`);
-  const localRightsPath = resolve(outDir, `submission-${payload.slug}-RIGHTS.md`);
-  await writeFile(localPath, markdown, "utf8");
-  await writeFile(localManifestPath, manifest, "utf8");
-  await writeFile(localRightsPath, rights, "utf8");
-
-  return {
-    slug: payload.slug,
-    filename,
-    manifestFilename,
-    rightsFilename,
-    forkUrl,
-    repoUrl,
-    localPath,
-    localManifestPath,
-    localRightsPath,
-    markdown,
-    manifest,
-    rights
-  };
-}
-
-async function collectPayload(seed: SubmitInput): Promise<SubmitPayload> {
-  if (!needsPrompt(seed)) {
-    return normalizePayload({
-      name: seed.name!,
-      slug: seed.slug!,
-      intro: seed.intro!,
-      repo: seed.repo!,
-      api: seed.api!,
-      health: seed.health!,
-      commit: seed.commit!
-    });
-  }
-
-  const rl = createInterface({ input, output });
-  const askRequired = async (label: string, seeded?: string): Promise<string> => {
-    if (seeded?.trim()) return seeded.trim();
-    while (true) {
-      const value = (await rl.question(`  ${label}: `)).trim();
-      if (value) return value;
-      output.write(`  (${label} is required)\n`);
-    }
-  };
-
-  try {
-    return normalizePayload({
-      name: await askRequired("Project name", seed.name),
-      slug: await askRequired("Submission slug (for example, team-name-project-name)", seed.slug),
-      intro: await askRequired("One-line description", seed.intro),
-      repo: await askRequired("GitHub repo URL", seed.repo),
-      api: await askRequired("Deployed API base URL", seed.api),
-      health: await askRequired("Health-check URL", seed.health),
-      commit: await askRequired("40-character review commit", seed.commit)
-    });
-  } finally {
-    rl.close();
-  }
-}
-
-function needsPrompt(seed: SubmitInput): boolean {
-  return !seed.name || !seed.slug || !seed.intro || !seed.repo || !seed.api || !seed.health || !seed.commit;
-}
-
-function normalizePayload(payload: SubmitPayload): SubmitPayload {
-  return {
-    name: payload.name.trim(),
-    slug: payload.slug.trim(),
-    intro: payload.intro.trim(),
-    repo: normalizeUrl(payload.repo),
-    api: normalizeUrl(payload.api),
-    health: normalizeUrl(payload.health),
-    commit: payload.commit.trim()
-  };
-}
-
-function validatePayload(payload: SubmitPayload): void {
-  if (!payload.name) throw new Error("project name is required");
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(payload.slug)) {
-    throw new Error("submission slug must use lowercase letters, numbers, and hyphens");
-  }
-  if (!payload.intro) throw new Error("description is required");
-  assertHttpUrl(payload.repo, "GitHub repo URL");
-  assertHttpUrl(payload.api, "deployed API URL");
-  assertHttpUrl(payload.health, "health-check URL");
-  if (!/^[a-f0-9]{40}$/i.test(payload.commit)) {
-    throw new Error("review commit must be a 40-character Git commit SHA");
-  }
-}
-
-function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed.replace(/^\/+/, "")}`;
-}
-
-function assertHttpUrl(raw: string, label: string): void {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("unsupported protocol");
-  } catch {
-    throw new Error(`${label} must be a valid http(s) URL`);
-  }
+// Keep the public entry point for older callers, but stop before prompting,
+// collecting project details, or writing files. There is no override to reopen it.
+export async function runSubmit(_options: SubmitOptions): Promise<never> {
+  throw new Error(HACKATHON_CLOSED_MESSAGE);
 }
 
 export function renderMarkdown(payload: SubmitPayload, cliVersion: string): string {

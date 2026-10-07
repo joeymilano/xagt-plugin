@@ -198,7 +198,7 @@ export async function runCli(args: string[]): Promise<number> {
     process.stdout.write("  Helpful next commands:\n");
     process.stdout.write("    xagt-plugin install --target all   # optional: add skills to your agents\n");
     process.stdout.write("    xagt-plugin doctor                 # check session status\n");
-    process.stdout.write("    xagt-plugin submit                 # submit your project (when ready)\n\n");
+    process.stdout.write("\n");
     return 0;
   }
 
@@ -247,45 +247,11 @@ export async function runCli(args: string[]): Promise<number> {
       process.stdout.write("\n");
     }
     process.stdout.write("  Now go build your callable capability.\n\n");
-    process.stdout.write("  When you're ready to submit:\n");
-    process.stdout.write("    xagt-plugin submit\n\n");
     return failed.length === 0 ? 0 : 2;
   }
 
   if (command.command === "submit") {
-    process.stdout.write("\n  Prepare your MCP Hackathon submission\n\n");
-    const result = await runSubmit({
-      cliVersion: version,
-      input: {
-        name: command.name,
-        slug: command.slug,
-        intro: command.intro,
-        repo: command.repo,
-        api: command.api,
-        health: command.health,
-        commit: command.commit
-      }
-    });
-    process.stdout.write(`\n  ✓ Generated: ${result.localPath}\n`);
-    process.stdout.write(`  ✓ Generated: ${result.localManifestPath}\n\n`);
-    process.stdout.write(`  ✓ Generated: ${result.localRightsPath}\n\n`);
-    process.stdout.write(`  Submit as a PR to ${result.repoUrl}:\n\n`);
-    process.stdout.write(`    1. Fork in browser: ${result.forkUrl}\n\n`);
-    process.stdout.write("    2. Clone your fork and create the submission directory:\n\n");
-    process.stdout.write("       git clone https://github.com/<your-gh-username>/xagt-plugin\n");
-    process.stdout.write("       cd xagt-plugin\n");
-    process.stdout.write(`       git checkout -b submit-${result.slug}\n`);
-    process.stdout.write(`       mkdir -p submissions/mcp-hackathon/${result.slug}/source submissions/mcp-hackathon/${result.slug}/verification\n`);
-    process.stdout.write(`       cp "${result.localPath}" ${result.filename}\n`);
-    process.stdout.write(`       cp "${result.localManifestPath}" ${result.manifestFilename}\n`);
-    process.stdout.write(`       cp "${result.localRightsPath}" ${result.rightsFilename}\n`);
-    process.stdout.write("       # copy your complete, reviewable source into source/\n");
-    process.stdout.write("       # add reproducible API evidence to verification/README.md\n");
-    process.stdout.write(`       git add submissions/mcp-hackathon/${result.slug}\n`);
-    process.stdout.write(`       git commit -m "submit: ${result.slug}"\n`);
-    process.stdout.write(`       git push -u origin submit-${result.slug}\n\n`);
-    process.stdout.write(`    3. Open a PR against ${result.repoUrl}/compare\n\n`);
-    return 0;
+    return runSubmit({ cliVersion: version, input: command });
   }
 
   if (command.command === "report") {
@@ -327,8 +293,7 @@ function writeHelp(): void {
   process.stdout.write(`Usage:
   xagt-plugin setup [--target cursor|claude-code|codex|opencode|generic|all] [--force] [--dry-run] [--no-browser] [--loopback] [--skip-substep]
                               # one-shot: registers you + installs OKX skills
-  xagt-plugin submit [--name <s>] [--slug <team-project>] [--intro <s>] [--repo <url>] [--api <url>] [--health <url>] [--commit <sha>]
-                              # generates a manifest; add it, complete source, and verification evidence in a PR
+  xagt-plugin submit                 # unavailable: hackathon submissions are closed
   xagt-plugin login [--no-browser] [--loopback]   # re-login or switch accounts
   xagt-plugin logout                  # clear local credentials
   xagt-plugin install [--target ...]  # install skills only (no login)
@@ -341,10 +306,10 @@ Auth modes:
   --loopback    loopback browser flow (binds a local port, no paste required)
   --no-browser  device-code flow (for SSH / headless environments)
 
-Hackathon flow:
-  1. build and deploy a callable capability
-  2. xagt-plugin submit                # generate a manifest
-  3. submit source + evidence via GitHub PR
+The X-Agent AI MCP Hackathon 2026 has concluded. Submissions are closed.
+Final winners: https://github.com/xagentAI/xagt-plugin/blob/main/docs/mcp-hackathon-2026-winners.md
+Reward contact: admin https://t.me/KongK0u
+Ordinary non-competition contributions remain welcome through normal pull requests.
 `);
 }
 

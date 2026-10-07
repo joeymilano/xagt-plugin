@@ -9,7 +9,7 @@ import { resolveChangedSubmissionDirectory, validateSubmissionDirectory } from "
 
 export const REPOSITORY = "xagentAI/xagt-plugin";
 export const VALIDATION_WORKFLOW = ".github/workflows/submission-validation.yml";
-export const RECEIPT_MARKER = "<!-- xagent-mcp-submission-receipt-v1 -->";
+export const RECEIPT_MARKER = "<!-- xagent-mcp-submissions-closed-v1 -->";
 const PREFIX = "submissions/mcp-hackathon/";
 const MAX_FILES = 2_000;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -111,26 +111,22 @@ async function currentHead(api, pull, requireOpen = true) {
 
 export function receiptBody(number) {
   return `${RECEIPT_MARKER}
-### Submission received — #${prNumber(number)}
+### Hackathon submissions closed — #${prNumber(number)}
 
-Thank you for submitting to the current X-Agent MCP Hackathon. We have received your pull request.
+The X-Agent AI MCP Hackathon 2026 has concluded. **Submissions are closed; this PR is not accepted as a new competition entry.** Opening, reopening, or updating a PR does not reopen participation or change the published awards.
 
-**This is a receipt only. It does not confirm eligibility, completeness, technical approval, a judging result, or an award. Passing automated checks or merging code for archival purposes does not, by itself, mean the entry has passed review or won a prize.**
+The [final winners and awards](https://github.com/${REPOSITORY}/blob/main/docs/mcp-hackathon-2026-winners.md) have been published. For reward claims, contact [admin on Telegram](https://t.me/KongK0u).
 
-Please include the complete source for the submitted capability in this repository under \`submissions/mcp-hackathon/<slug>/source/\`, with dependency files, configuration examples, and reproducible setup/build instructions. An external repository link alone is not sufficient. The official copy is intended to remain available if the original repository later becomes unavailable. Do not include secrets, credentials, or private user data; clearly disclose external and private-service dependencies.
-
-The [automated checks](https://github.com/${REPOSITORY}/pull/${number}/checks) report technical checks separately. A workflow failure is not a judging decision. Keep updates in this PR while submissions remain open, and keep the documented source version and deployment evidence consistent.
-
-See the [submission instructions](https://github.com/${REPOSITORY}/blob/main/submissions/README.md). Final review results and awards will be announced separately through the official event channels.`;
+Historical projects and records remain available. Ordinary non-competition contributions, including maintenance of existing archived projects, may continue through the normal pull request process. Technical checks and archival maintenance do not establish eligibility or grant an award.`;
 }
 
 export function workflowSummary(action, report, error) {
   // Participant-controlled messages must not become HTML or clickable Markdown.
   const escape = (value) => String(value).replace(/[\x00-\x1f\x7f]/g, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const title = { receipt: "Submission receipt", validate: "Submission checks", archive: "Source preservation", seal: "Manual acceptance archive" }[action] ?? "Submission workflow";
-  const boundary = "A receipt, successful automated check, or source archive is not eligibility approval, a judging result, or an award. Final decisions are recorded separately by the event team.";
+  const title = { receipt: "Hackathon submissions closed", validate: "Submission checks", archive: "Source preservation", seal: "Manual acceptance archive" }[action] ?? "Submission workflow";
+  const boundary = "A receipt, successful automated check, or source archive is not eligibility approval, a judging result, or an award. The hackathon has concluded, submissions are closed, and final winners and awards are already published.";
   if (error) {
-    return `## ${title}: not completed\n\n${boundary}\n\n<pre>${escape(error.message).slice(0, 2000)}</pre>\n\nIf this message identifies missing or inconsistent submission material, update the same PR and follow the [submission instructions](https://github.com/${REPOSITORY}/blob/main/submissions/README.md). Repository permissions, checkout, API, and runner failures need maintainer attention; they are not judging decisions.\n`;
+    return `## ${title}: not completed\n\n${boundary}\n\n<pre>${escape(error.message).slice(0, 2000)}</pre>\n\nFor maintenance of existing archived projects, follow the [archived submission contract](https://github.com/${REPOSITORY}/blob/main/submissions/README.md). Repository permissions, checkout, API, and runner failures need maintainer attention; they are not judging decisions.\n`;
   }
   const details = report.checks?.map((check) => `<li>${escape(check)}</li>`).join("") ?? "";
   return `## ${title}\n\n${boundary}\n\nStatus: <code>${escape(report.status ?? "sealed")}</code>\n\n${report.reason ? `<p>${escape(report.reason)}</p>\n` : ""}${details ? `<ul>${details}</ul>\n` : ""}\nFor review and retention details, see the [source retention policy](https://github.com/${REPOSITORY}/blob/main/docs/submission-retention-and-reward.md).\n`;
@@ -146,19 +142,19 @@ export async function acknowledgeSubmission(api, number) {
   const pull = await readPull(api, number);
   if (pull.state !== "open") return { status: "skipped", reason: "pull request is not open" };
   const files = await changedFiles(api, pull);
-  if (!files.some((file) => file.filename.startsWith(PREFIX))) return { status: "skipped", reason: "not a current hackathon submission" };
+  if (!files.some((file) => [file.filename, file.previous_filename].some((path) => path?.startsWith(PREFIX)))) return { status: "skipped", reason: "not an MCP hackathon path" };
   const comments = await api.list(`/repos/${REPOSITORY}/issues/${pull.number}/comments`);
   const receipt = comments.find((comment) => comment.body?.includes(RECEIPT_MARKER) && (
     comment.user?.login === "github-actions[bot]" || ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.author_association)
   ));
-  if (receipt) return { status: "already-received", url: receipt.html_url };
+  if (receipt) return { status: "already-notified-closed", url: receipt.html_url };
   await currentHead(api, pull);
   // Workflow concurrency serializes receipts for one PR. A failed POST is never
   // retried blindly; the next run lists comments again before deciding to post.
   const comment = await api.request(`/repos/${REPOSITORY}/issues/${pull.number}/comments`, {
     method: "POST", body: { body: receiptBody(pull.number) }
   });
-  return { status: "received", url: comment.html_url };
+  return { status: "closed", url: comment.html_url };
 }
 
 export async function submissionTree(api, commit, slug) {
@@ -211,6 +207,11 @@ export async function materializeSubmission(api, commit, slug, directory) {
 export async function validatePull(api, pull, options = {}) {
   assert(pull.state === "open", "pull request is not open");
   const slug = submissionSlug(await changedFiles(api, pull));
+  // Inspect the trusted base commit, not participant metadata or PR timestamps.
+  // Existing archived projects can still receive ordinary maintenance; new
+  // directories cannot enter the concluded event or reach automatic archival.
+  const existing = await optional(api, `/repos/${REPOSITORY}/contents/${PREFIX}${slug}?ref=${sha(pull.base.sha)}`);
+  assert(Array.isArray(existing), "The X-Agent AI MCP Hackathon 2026 has concluded. Submissions are closed; new competition entries cannot be validated or archived. Ordinary contributions may use the normal PR process outside the competition submission directory.");
   const scratchRoot = options.scratchRoot ?? process.env.RUNNER_TEMP ?? resolve("node_modules/.cache");
   await mkdir(scratchRoot, { recursive: true });
   const temporary = await mkdtemp(join(scratchRoot, "xagt-review-"));

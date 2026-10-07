@@ -1,11 +1,13 @@
-# Submission contract
+# Archived submission contract
 
-This directory contains both the preserved May 2026 hackathon archive and the official code-submission location for the current X-Agent MCP Hackathon.
+**The X-Agent AI MCP Hackathon 2026 has concluded. Submissions are closed.** See the [final winners and reward contact instructions](../docs/mcp-hackathon-2026-winners.md). The contract below is retained for the existing submissions and event archive.
+
+This directory contains both the preserved May 2026 hackathon archive and the submitted projects from the September–October 2026 X-Agent MCP Hackathon.
 
 - Historical entries remain at `submissions/<participant-id>-<project>/` and are indexed in [`INDEX.md`](./INDEX.md).
-- New MCP Hackathon entries go only under `submissions/mcp-hackathon/<team>-<project>/`.
+- September–October MCP Hackathon entries are preserved under `submissions/mcp-hackathon/<team>-<project>/`.
 
-Do not modify a historical project to enter the current program.
+Preserve the existing project records. These archived instructions do not reopen submissions.
 
 ## Create one project directory
 
